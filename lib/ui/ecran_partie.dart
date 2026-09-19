@@ -149,6 +149,8 @@ class _BandeauJoueurs extends StatelessWidget {
       ),
     );
   }
+}
+  
   // ---------------------------------------------------------------------------
 
 class _LigneCase extends StatelessWidget {

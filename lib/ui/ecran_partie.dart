@@ -149,8 +149,7 @@ class _BandeauJoueurs extends StatelessWidget {
       ),
     );
   }
-}
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
 class _LigneCase extends StatelessWidget {
   const _LigneCase({required this.partie, required this.index});
@@ -218,8 +217,16 @@ class _LigneCase extends StatelessWidget {
   }
 
   String _sousTitre(CasePlateau c, Joueur? proprietaire, EtatPropriete? etat) {
-    if (c is! CaseAchetable) return '';
-    if (proprietaire == null) return 'Libre · ${c.prix} €';
+    // On lit le prix via un switch sur les classes concrètes : Dart ne
+    // promeut pas de façon fiable vers l'interface CaseAchetable.
+    final prix = switch (c) {
+      CaseTerrain(:final prix) => prix,
+      CaseGare(:final prix) => prix,
+      CaseCompagnie(:final prix) => prix,
+      _ => null,
+    };
+    if (prix == null) return '';
+    if (proprietaire == null) return 'Libre · $prix €';
 
     final maisons = etat!.constructions;
     final construction = switch (maisons) {
@@ -332,4 +339,5 @@ class _BarreActions extends StatelessWidget {
     } while (partie.joueurs[i].enFaillite && i != partie.joueurCourantIndex);
     return partie.joueurs[i].nom;
   }
+}
 }

@@ -103,4 +103,122 @@ const List<CasePlateau> plateauPortAval = [
   CaseTerrain(
     index: 19,
     nom: 'Avenue du Phare',
-    groupe: Groupe
+    groupe: GroupeCouleur.orange,
+    prix: 200,
+    prixConstruction: 100,
+    loyers: [16, 80, 220, 600, 800, 1000],
+  ),
+
+  CaseParcGratuit(index: 20, nom: 'Esplanade libre'),
+
+  CaseTerrain(
+    index: 21,
+    nom: 'Rue Bellerive',
+    groupe: GroupeCouleur.rouge,
+    prix: 220,
+    prixConstruction: 150,
+    loyers: [18, 90, 250, 700, 875, 1050],
+  ),
+  CaseCarte(index: 22, nom: 'Coup du sort', paquet: TypePaquet.chance),
+  CaseTerrain(
+    index: 23,
+    nom: 'Cours Tissot',
+    groupe: GroupeCouleur.rouge,
+    prix: 220,
+    prixConstruction: 150,
+    loyers: [18, 90, 250, 700, 875, 1050],
+  ),
+  CaseTerrain(
+    index: 24,
+    nom: 'Avenue des Arènes',
+    groupe: GroupeCouleur.rouge,
+    prix: 240,
+    prixConstruction: 150,
+    loyers: [20, 100, 300, 750, 925, 1100],
+  ),
+  CaseGare(index: 25, nom: 'Gare des Docks'),
+
+  CaseTerrain(
+    index: 26,
+    nom: 'Boulevard Malmont',
+    groupe: GroupeCouleur.jaune,
+    prix: 260,
+    prixConstruction: 150,
+    loyers: [22, 110, 330, 800, 975, 1150],
+  ),
+  CaseTerrain(
+    index: 27,
+    nom: 'Rue du Cygne',
+    groupe: GroupeCouleur.jaune,
+    prix: 260,
+    prixConstruction: 150,
+    loyers: [22, 110, 330, 800, 975, 1150],
+  ),
+  CaseCompagnie(index: 28, nom: 'Régie des eaux'),
+  CaseTerrain(
+    index: 29,
+    nom: 'Esplanade Caron',
+    groupe: GroupeCouleur.jaune,
+    prix: 280,
+    prixConstruction: 150,
+    loyers: [24, 120, 360, 850, 1025, 1200],
+  ),
+
+  CaseAllezEnPrison(index: 30, nom: 'Allez en prison'),
+
+  CaseTerrain(
+    index: 31,
+    nom: 'Avenue Morvan',
+    groupe: GroupeCouleur.vert,
+    prix: 300,
+    prixConstruction: 200,
+    loyers: [26, 130, 390, 900, 1100, 1275],
+  ),
+  CaseTerrain(
+    index: 32,
+    nom: 'Rue des Alizés',
+    groupe: GroupeCouleur.vert,
+    prix: 300,
+    prixConstruction: 200,
+    loyers: [26, 130, 390, 900, 1100, 1275],
+  ),
+  CaseCarte(index: 33, nom: 'Coffre de la ville', paquet: TypePaquet.coffre),
+  CaseTerrain(
+    index: 34,
+    nom: 'Promenade du Belvédère',
+    groupe: GroupeCouleur.vert,
+    prix: 320,
+    prixConstruction: 200,
+    loyers: [28, 150, 450, 1000, 1200, 1400],
+  ),
+  CaseGare(index: 35, nom: 'Gare du Belvédère'),
+
+  CaseCarte(index: 36, nom: 'Coup du sort', paquet: TypePaquet.chance),
+  CaseTerrain(
+    index: 37,
+    nom: "Quai d'Honneur",
+    groupe: GroupeCouleur.bleu,
+    prix: 350,
+    prixConstruction: 200,
+    loyers: [35, 175, 500, 1100, 1300, 1500],
+  ),
+  CaseTaxe(index: 38, nom: 'Taxe de luxe', montant: 100),
+  CaseTerrain(
+    index: 39,
+    nom: 'Avenue Aurore',
+    groupe: GroupeCouleur.bleu,
+    prix: 400,
+    prixConstruction: 200,
+    loyers: [50, 200, 600, 1400, 1700, 2000],
+  ),
+];
+
+/// Combien de terrains dans chaque famille (utile pour savoir si
+/// un joueur possède le groupe complet).
+final Map<GroupeCouleur, int> taillesGroupes = {
+  for (final g in GroupeCouleur.values)
+    g: plateauPortAval
+        .whereType<CaseTerrain>()
+        .where((t) => t.groupe == g)
+        .length,
+};

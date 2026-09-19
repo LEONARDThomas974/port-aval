@@ -192,7 +192,8 @@ class Partie {
         .where((t) => t.groupe == groupe);
     return terrains
         .every((t) => proprietes[t.index]!.proprietaireId == joueurId);
-    // -------------------------------------------------------------------------
+  }
+ // -------------------------------------------------------------------------
   // Mécanique interne
   // -------------------------------------------------------------------------
 
@@ -368,5 +369,4 @@ class Partie {
   void _exige(bool condition, String message) {
     if (!condition) throw StateError(message);
   }
-  }
-  }
+} 

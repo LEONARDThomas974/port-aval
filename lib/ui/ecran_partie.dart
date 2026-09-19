@@ -342,4 +342,3 @@ class _BarreActions extends StatelessWidget {
     return partie.joueurs[i].nom;
   }
 }
-}

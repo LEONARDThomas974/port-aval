@@ -26,11 +26,16 @@ jobs:
           channel: stable
           cache: true
 
+      # Le dossier android/ n'est pas versionné : Flutter le régénère.
       - name: Générer le projet Android
         run: flutter create --platforms=android --project-name port_aval --org com.exemple .
 
+      # flutter create peut écraser nos fichiers et fabrique un
+      # test/widget_test.dart qui référence une classe MyApp qu'on n'a pas.
       - name: Restaurer les fichiers versionnés
-        run: git checkout -- lib pubspec.yaml
+        run: |
+          git checkout -- lib pubspec.yaml
+          rm -f test/widget_test.dart
 
       - run: flutter pub get
 
@@ -47,10 +52,4 @@ jobs:
           tag_name: dernier-build
           name: Dernier build
           prerelease: true
-          files: build/app/outputs/flutter-apk/app-release.apk
-
-      - name: Archiver l'APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: port-aval-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          files: build/app/outputs/flutter-apk/app-release.a

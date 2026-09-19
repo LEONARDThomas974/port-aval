@@ -1,12 +1,39 @@
 import 'package:flutter/material.dart';
 
 import '../moteur/case_plateau.dart';
+import '../moteur/joueur.dart';
 import '../moteur/partie.dart';
 import 'geometrie_plateau.dart';
 import 'theme.dart';
 
-/// Une case du plateau : bandeau de couleur tourné vers le centre, nom
-/// abrégé, marqueur de propriétaire et pions présents.
+/// L'icône qui représente une case. `null` pour un terrain, qui affiche
+/// son prix à la place.
+IconData? iconeCase(CasePlateau c) => switch (c) {
+      CaseTerrain() => null,
+      CaseGare() => Icons.directions_railway,
+      // La régie des eaux est la seule compagnie dont le nom parle d'eau.
+      CaseCompagnie() =>
+        c.nom.toLowerCase().contains('eau') ? Icons.water_drop : Icons.bolt,
+      CaseCarte(paquet: TypePaquet.chance) => Icons.help_outline,
+      CaseCarte(paquet: TypePaquet.coffre) => Icons.inventory_2_outlined,
+      CaseTaxe() => Icons.account_balance,
+      CaseDepart() => Icons.east,
+      CasePrison() => Icons.lock_outline,
+      CaseParcGratuit() => Icons.park_outlined,
+      CaseAllezEnPrison() => Icons.gavel,
+    };
+
+Color couleurIcone(CasePlateau c) => switch (c) {
+      CaseCarte(paquet: TypePaquet.chance) => const Color(0xFFD1608C),
+      CaseCarte(paquet: TypePaquet.coffre) => const Color(0xFF2E8B57),
+      CaseAllezEnPrison() || CasePrison() => const Color(0xFFC5342C),
+      CaseTaxe() => const Color(0xFF7A4A2B),
+      CaseDepart() => const Color(0xFF2E8B57),
+      _ => encrePlateau,
+    };
+
+/// Une case du plateau : bandeau de couleur tourné vers le centre, prix ou
+/// icône, maisons construites, marqueur de propriétaire et pions présents.
 class CaseWidget extends StatelessWidget {
   const CaseWidget({
     super.key,
@@ -25,122 +52,160 @@ class CaseWidget extends StatelessWidget {
     final etat = partie.proprietes[index];
     final proprietaire = partie.joueurParId(etat?.proprietaireId);
     final cote = cotePlateau(index);
-    final epaisseur = taille * 0.22;
+    final epaisseur = taille * 0.26;
 
     final pions = partie.joueurs
         .where((j) => !j.enFaillite && j.position == index)
         .toList();
 
+    final couleurProprio = proprietaire == null
+        ? null
+        : couleursJoueurs[proprietaire.id % couleursJoueurs.length];
+
     return GestureDetector(
       onTap: () => _montrerFiche(context),
       child: Container(
         decoration: BoxDecoration(
-          color: encre,
-          border: Border.all(color: const Color(0xFF2C3F4E), width: 0.5),
+          color: couleurProprio == null
+              ? parchemin
+              : Color.alphaBlend(couleurProprio.withAlpha(30), parchemin),
+          border: const Border(
+            right: BorderSide(color: traitPlateau, width: 0.5),
+            bottom: BorderSide(color: traitPlateau, width: 0.5),
+          ),
         ),
         child: Stack(
           children: [
-            if (c is CaseTerrain) _bande(c.groupe, epaisseur, cote),
+            if (c is CaseTerrain) _bande(c, etat, epaisseur, cote),
             Padding(
               padding: _margeTexte(epaisseur, cote),
-              child: Center(
-                child: Text(
-                  c.nom,
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: toile,
-                    fontSize: taille * 0.19,
-                    height: 1.05,
-                  ),
-                ),
-              ),
+              child: Center(child: _contenu(c)),
             ),
-            if (proprietaire != null)
-              Positioned(
-                right: 1,
-                bottom: 1,
-                child: Container(
-                  width: taille * 0.16,
-                  height: taille * 0.16,
-                  color: couleursJoueurs[
-                      proprietaire.id % couleursJoueurs.length],
-                ),
-              ),
-            if (pions.isNotEmpty)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: taille * 0.05,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (final j in pions)
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                        width: taille * 0.2,
-                        height: taille * 0.2,
-                        decoration: BoxDecoration(
-                          color: couleursJoueurs[j.id % couleursJoueurs.length],
-                          shape: BoxShape.circle,
-                          border: Border.all(color: encre, width: 0.8),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+            if (couleurProprio != null) _lisereProprio(couleurProprio, cote),
+            if (pions.isNotEmpty) _pions(pions),
           ],
         ),
       ),
     );
   }
 
-  /// Le bandeau de couleur, posé sur le bord tourné vers le centre.
-  Widget _bande(GroupeCouleur groupe, double epaisseur, CotePlateau cote) {
-    final couleur = couleurGroupe(groupe);
+  /// Au centre : le prix pour un terrain, une icône sinon.
+  Widget _contenu(CasePlateau c) {
+    final icone = iconeCase(c);
+    if (icone != null) {
+      return Icon(icone, size: taille * 0.42, color: couleurIcone(c));
+    }
+    return Text(
+      '${(c as CaseTerrain).prix}',
+      style: TextStyle(
+        color: encrePlateau,
+        fontSize: taille * 0.30,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  /// Le bandeau de couleur, sur le bord tourné vers le centre. Les maisons
+  /// construites s'affichent dessus sous forme de petits carrés.
+  Widget _bande(
+    CaseTerrain c,
+    EtatPropriete? etat,
+    double epaisseur,
+    CotePlateau cote,
+  ) {
+    final maisons = etat?.constructions ?? 0;
+    final horizontal = cote == CotePlateau.bas || cote == CotePlateau.haut;
+
+    final contenu = Container(
+      color: couleurGroupe(c.groupe),
+      alignment: Alignment.center,
+      child: maisons == 0
+          ? null
+          : Flex(
+              direction: horizontal ? Axis.horizontal : Axis.vertical,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < (maisons == 5 ? 1 : maisons); i++)
+                  Container(
+                    margin: const EdgeInsets.all(0.6),
+                    width: taille * (maisons == 5 ? 0.18 : 0.1),
+                    height: taille * (maisons == 5 ? 0.18 : 0.1),
+                    color: maisons == 5
+                        ? const Color(0xFFC5342C)
+                        : const Color(0xFFF4EADA),
+                  ),
+              ],
+            ),
+    );
+
     return switch (cote) {
-      CotePlateau.bas => Positioned(
-          left: 0,
-          right: 0,
-          top: 0,
-          height: epaisseur,
-          child: ColoredBox(color: couleur),
-        ),
+      CotePlateau.bas =>
+        Positioned(left: 0, right: 0, top: 0, height: epaisseur, child: contenu),
       CotePlateau.haut => Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: epaisseur,
-          child: ColoredBox(color: couleur),
-        ),
+          left: 0, right: 0, bottom: 0, height: epaisseur, child: contenu),
       CotePlateau.gauche => Positioned(
-          top: 0,
-          bottom: 0,
-          right: 0,
-          width: epaisseur,
-          child: ColoredBox(color: couleur),
-        ),
+          top: 0, bottom: 0, right: 0, width: epaisseur, child: contenu),
       CotePlateau.droite => Positioned(
-          top: 0,
-          bottom: 0,
-          left: 0,
-          width: epaisseur,
-          child: ColoredBox(color: couleur),
-        ),
+          top: 0, bottom: 0, left: 0, width: epaisseur, child: contenu),
       CotePlateau.coin => const SizedBox.shrink(),
     };
   }
 
+  /// Un liseré de la couleur du propriétaire, sur le bord extérieur.
+  Widget _lisereProprio(Color couleur, CotePlateau cote) {
+    final e = taille * 0.09;
+    final barre = ColoredBox(color: couleur);
+    return switch (cote) {
+      CotePlateau.bas =>
+        Positioned(left: 0, right: 0, bottom: 0, height: e, child: barre),
+      CotePlateau.haut =>
+        Positioned(left: 0, right: 0, top: 0, height: e, child: barre),
+      CotePlateau.gauche =>
+        Positioned(top: 0, bottom: 0, left: 0, width: e, child: barre),
+      CotePlateau.droite =>
+        Positioned(top: 0, bottom: 0, right: 0, width: e, child: barre),
+      CotePlateau.coin => const SizedBox.shrink(),
+    };
+  }
+
+  Widget _pions(List<Joueur> pions) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: taille * 0.06,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (final j in pions)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 0.8),
+              width: taille * 0.28,
+              height: taille * 0.28,
+              decoration: BoxDecoration(
+                color: couleursJoueurs[j.id % couleursJoueurs.length],
+                shape: BoxShape.circle,
+                border: Border.all(color: parchemin, width: 1),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x55000000),
+                    blurRadius: 2,
+                    offset: Offset(0, 1),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   EdgeInsets _margeTexte(double epaisseur, CotePlateau cote) => switch (cote) {
-        CotePlateau.bas => EdgeInsets.only(top: epaisseur, bottom: 1),
-        CotePlateau.haut => EdgeInsets.only(bottom: epaisseur, top: 1),
-        CotePlateau.gauche => EdgeInsets.only(right: epaisseur, left: 1),
-        CotePlateau.droite => EdgeInsets.only(left: epaisseur, right: 1),
-        CotePlateau.coin => const EdgeInsets.all(1),
-      };
-  /// Au toucher, la fiche complète : les noms ne tiennent pas en entier
-  /// dans une case de 30 pixels.
+        CotePlateau.bas => EdgeInsets.only(top: epaisseur),
+        CotePlateau.haut => EdgeInsets.only(bottom: epaisseur),
+        CotePlateau.gauche => EdgeInsets.only(right: epaisseur),
+        CotePlateau.droite => EdgeInsets.only(left: epaisseur),
+        CotePlateau.coin => EdgeInsets.zero,
+      };/// Au toucher, la fiche complète : le nom ne tient pas dans une case.
   void _montrerFiche(BuildContext context) {
     final c = partie.plateau[index];
     final etat = partie.proprietes[index];
@@ -156,13 +221,23 @@ class CaseWidget extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: encreClaire,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (c is CaseTerrain)
+                Container(
+                  width: 56,
+                  height: 6,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: couleurGroupe(c.groupe),
+                ),
               Text(
                 c.nom,
                 style: const TextStyle(

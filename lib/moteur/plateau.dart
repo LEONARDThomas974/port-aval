@@ -107,9 +107,7 @@ const List<CasePlateau> plateauPortAval = [
     prix: 200,
     prixConstruction: 100,
     loyers: [16, 80, 220, 600, 800, 1000],
-  ),
-
-  CaseParcGratuit(index: 20, nom: 'Esplanade libre'),
+  ),CaseParcGratuit(index: 20, nom: 'Esplanade libre'),
 
   CaseTerrain(
     index: 21,
@@ -222,3 +220,4 @@ final Map<GroupeCouleur, int> taillesGroupes = {
         .where((t) => t.groupe == g)
         .length,
 };
+  

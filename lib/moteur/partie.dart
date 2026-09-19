@@ -250,4 +250,111 @@ class Partie {
       return;
     }
 
-    final
+    final proprietaire = joueurParId(etat.proprietaireId)!;
+    final loyer = calculerLoyer(c.index);
+    _log('${j.nom} paie $loyer € de loyer à ${proprietaire.nom}.');
+    _payer(j, proprietaire, loyer);
+    phase = Phase.finDeTour;
+  }
+
+  /// Loyer dû par celui qui s'arrête sur la case [indexCase].
+  int calculerLoyer(int indexCase) {
+    final c = plateau[indexCase];
+    final etat = proprietes[indexCase]!;
+    final proprietaireId = etat.proprietaireId;
+    if (proprietaireId == null || etat.hypothequee) return 0;
+
+    switch (c) {
+      case CaseTerrain terrain:
+        if (etat.constructions > 0) return terrain.loyers[etat.constructions];
+        // Terrain nu : loyer doublé si le groupe est complet.
+        final base = terrain.loyers[0];
+        return possedeGroupeComplet(proprietaireId, terrain.groupe)
+            ? base * 2
+            : base;
+
+      case CaseGare():
+        final n = _compter<CaseGare>(proprietaireId);
+        return CaseGare.loyerPour(n);
+
+      case CaseCompagnie():
+        final n = _compter<CaseCompagnie>(proprietaireId);
+        return CaseCompagnie.loyerPour(n, dernierLancer?.total ?? 7);
+
+      default:
+        return 0;
+    }
+  }
+
+  int _compter<T extends CasePlateau>(int proprietaireId) => plateau
+      .whereType<T>()
+      .where((c) => proprietes[c.index]!.proprietaireId == proprietaireId)
+      .length;
+
+  /// Transfert d'argent. [vers] à `null` = la banque.
+  ///
+  /// Version simplifiée : si le joueur ne peut pas payer, il fait faillite.
+  /// L'étape suivante sera de le laisser hypothéquer ou vendre ses maisons.
+  void _payer(Joueur de, Joueur? vers, int montant) {
+    if (de.argent >= montant) {
+      de.argent -= montant;
+      if (vers != null) vers.argent += montant;
+      return;
+    }
+
+    _log('${de.nom} ne peut pas payer $montant € : faillite.');
+    if (vers != null) vers.argent += de.argent;
+    de.argent = 0;
+    de.enFaillite = true;
+
+    // Ses propriétés reviennent au créancier (ou à la banque).
+    for (final etat in proprietes.values) {
+      if (etat.proprietaireId == de.id) {
+        etat.proprietaireId = vers?.id;
+        etat.constructions = 0;
+      }
+    }
+  }
+
+  void _envoyerEnPrison(Joueur j) {
+    j.position = 10;
+    j.enPrison = true;
+    j.toursEnPrison = 0;
+    _doublesConsecutifs = 0;
+    _log('${j.nom} va en prison.');
+    phase = Phase.finDeTour;
+  }
+
+  void _gererPrison(Lancer lancer) {
+    final j = joueurCourant;
+
+    if (lancer.estDouble) {
+      j.enPrison = false;
+      j.toursEnPrison = 0;
+      _log('${j.nom} fait un double et sort de prison.');
+      _avancer(j, lancer.total);
+      _resoudreCase();
+      return;
+    }
+
+    j.toursEnPrison++;
+    if (j.toursEnPrison >= 3) {
+      _log('${j.nom} paie 50 € et sort après 3 tours.');
+      _payer(j, null, 50);
+      j.enPrison = false;
+      j.toursEnPrison = 0;
+      _avancer(j, lancer.total);
+      _resoudreCase();
+      return;
+    }
+
+    _log('${j.nom} reste en prison (tour ${j.toursEnPrison}/3).');
+    phase = Phase.finDeTour;
+  }
+
+  void _log(String message) => journal.add(message);
+
+  void _exige(bool condition, String message) {
+    if (!condition) throw StateError(message);
+  }
+}

@@ -61,10 +61,22 @@ class Partie {
     return joueurs.firstWhere((j) => j.id == id);
   }
 
+  /// Convertit une case en `CaseAchetable` si elle en est une.
+  ///
+  /// On teste les trois classes concrètes plutôt que l'interface :
+  /// Dart perd la promotion vers un type intersection dans une expression
+  /// ternaire ou un passage d'argument, ce qui produit des erreurs obscures.
+  CaseAchetable? _commeAchetable(CasePlateau c) {
+    if (c is CaseTerrain) return c;
+    if (c is CaseGare) return c;
+    if (c is CaseCompagnie) return c;
+    return null;
+  }
+
   /// La propriété sur laquelle est posé le joueur courant, si elle est à vendre.
   CaseAchetable? get proprieteAVendre {
-    final c = caseCourante;
-    if (c is! CaseAchetable) return null;
+    final c = _commeAchetable(caseCourante);
+    if (c == null) return null;
     return proprietes[c.index]!.estLibre ? c : null;
   }
 
@@ -180,9 +192,7 @@ class Partie {
         .where((t) => t.groupe == groupe);
     return terrains
         .every((t) => proprietes[t.index]!.proprietaireId == joueurId);
-  }
-
-  // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
   // Mécanique interne
   // -------------------------------------------------------------------------
 
@@ -201,8 +211,9 @@ class Partie {
     final c = caseCourante;
     final j = joueurCourant;
 
-    if (c is CaseAchetable) {
-      _resoudreAchetable(c);
+    final achetable = _commeAchetable(c);
+    if (achetable != null) {
+      _resoudreAchetable(achetable);
       return;
     }
 
@@ -357,4 +368,5 @@ class Partie {
   void _exige(bool condition, String message) {
     if (!condition) throw StateError(message);
   }
-}
+  }
+  }
